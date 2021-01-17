@@ -1,8 +1,14 @@
-import requests
-from bs4 import BeautifulSoup, Tag
-import urllib.parse
-from selenium import webdriver
 import time
+import json
+import requests
+import urllib.parse
+import urllib.request
+
+from tqdm import tqdm
+from selenium import webdriver
+from bs4 import BeautifulSoup, Tag
+
+MAIN_URL = 'https://tass.ru/'
 
 
 def get_heading_name(result_set):
@@ -17,19 +23,21 @@ def get_heading_name(result_set):
 
     return next_links
 
+
 def get_tags(tags_list):
     tags = []
-    for _tag in tags_list.content:
-         tags.append(_tag.text)
+    for _tag in tags_list.contents:
+        tags.append(_tag.text)
 
     tags = ','.join(tags)
     return tags
 
+
 def get_page_info(link):
     result = {}
 
-    response = requests.get(link)
-    soup = BeautifulSoup(response.text, 'lxml')
+    response = urllib.request.urlopen(link)
+    soup = BeautifulSoup(response, 'lxml')
 
     result['article_id'] = link
     result['title'] = soup.find('h1', class_='news-header__title').text
@@ -40,33 +48,53 @@ def get_page_info(link):
 
     return result
 
-main_url = 'https://tass.ru/'
-response = requests.get(main_url)
-soup = BeautifulSoup(response.text, 'lxml')
 
-headings = soup.find_all('li', class_='menu-sections-list-item')
+def parse_tass_news():
+    news_parsed = {'catalog': []}
 
-links = get_heading_name(headings)
+    response = requests.get(MAIN_URL)
+    soup = BeautifulSoup(response.text, 'lxml')
+
+    headings = soup.find_all('li', class_='menu-sections-list-item')
+
+    links = get_heading_name(headings)
+    links = [links[1], links[4], links[8], links[11]]
+
+    for link in links:
+
+        curr_head = {'catalog': []}
+        print(link)
+        heading_link = urllib.parse.urljoin(MAIN_URL, link)
+
+        driver = webdriver.Firefox()
+        driver.get(heading_link)
+        for i in range(130):
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(1)
+
+        html = driver.page_source
+        soup = BeautifulSoup(html)
+
+        news = soup.find_all('a', class_='cardWrap_link__2AN_X')
+
+        if len(news) < 1000:
+            print(f'{link} contains only {len(news)} elements')
+
+        for n in tqdm(news[:1000]):
+            news_link = urllib.parse.urljoin(MAIN_URL, n.attrs['href'])
+            try:
+                result_dict = get_page_info(news_link)
+                news_parsed['catalog'].append(result_dict)
+                curr_head['catalog'].append(result_dict)
+            except:
+                continue
+
+        with open(f'parsed_news_kuklin_maxim_{link[1:]}.json', 'w') as outfile:
+            json.dump(curr_head, outfile, ensure_ascii=False)
+
+    with open('parsed_news_kuklin_maxim.json', 'w') as outfile:
+        json.dump(news_parsed, outfile, ensure_ascii=False)
 
 
-news_parsed = {'catalog': []}
-
-for link in links:
-    heading_link = urllib.parse.urljoin(main_url, link)
-
-    driver = webdriver.Firefox()
-    driver.get(heading_link)
-    # for i in range(125):
-    for i in range(10):
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(0.01)
-
-    html = driver.page_source
-    soup = BeautifulSoup(html)
-
-    news = soup.find_all('a', class_='cardWrap_link__2AN_X')
-
-    for n in news:
-        news_link = urllib.parse.urljoin(main_url, n.attrs['href'])
-        result_dict = get_page_info(news_link)
-        news_parsed['catalog'].append(result_dict)
+if __name__ == '__main__':
+    parse_tass_news()
