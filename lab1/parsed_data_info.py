@@ -19,13 +19,13 @@ def get_info(args):
     ek = [a for a in content['catalog'] if a['category'] == 'ekonomika']
     kult = [a for a in content['catalog'] if a['category'] == 'kultura']
     pol = [a for a in content['catalog'] if a['category'] == 'politika']
-    sp = [a for a in content['catalog'] if a['category'] == 'sport']
+    ob = [a for a in content['catalog'] if a['category'] == 'obschestvo']
 
     data = {
         'ekonomika': ek,
         'kultura': kult,
         'potika': pol,
-        'sport': sp
+        'obschestvo': ob
     }
 
     for category, d in data.items():

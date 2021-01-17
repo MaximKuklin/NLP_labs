@@ -58,24 +58,24 @@ def parse_tass_news():
     headings = soup.find_all('li', class_='menu-sections-list-item')
 
     links = get_heading_name(headings)
-    links = [links[1], links[4], links[8], links[11]]
+    links = [links[1], links[4], links[8], links[11]]  # 4 category links (ekonomika, kultura, politika, obschestvo)
 
     for link in links:
 
         curr_head = {'catalog': []}
         print(link)
-        heading_link = urllib.parse.urljoin(MAIN_URL, link)
+        heading_link = urllib.parse.urljoin(MAIN_URL, link)  # get next link
 
-        driver = webdriver.Firefox()
+        driver = webdriver.Firefox()  # open firefox
         driver.get(heading_link)
         for i in range(130):
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")  # scroll down to update tass.ru news
             time.sleep(1)
 
         html = driver.page_source
         soup = BeautifulSoup(html)
 
-        news = soup.find_all('a', class_='cardWrap_link__2AN_X')
+        news = soup.find_all('a', class_='cardWrap_link__2AN_X')  # get data from available news
 
         if len(news) < 1000:
             print(f'{link} contains only {len(news)} elements')
@@ -83,12 +83,13 @@ def parse_tass_news():
         for n in tqdm(news[:1000]):
             news_link = urllib.parse.urljoin(MAIN_URL, n.attrs['href'])
             try:
-                result_dict = get_page_info(news_link)
+                result_dict = get_page_info(news_link)  # get necessary data
                 news_parsed['catalog'].append(result_dict)
                 curr_head['catalog'].append(result_dict)
             except:
                 continue
 
+        # save file
         with open(f'parsed_news_kuklin_maxim_{link[1:]}.json', 'w') as outfile:
             json.dump(curr_head, outfile, ensure_ascii=False)
 
